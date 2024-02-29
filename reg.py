@@ -1,98 +1,122 @@
-import tkinter as tk
-from tkinter import ttk
 from tkinter import *
+from tkinter import messagebox
 import sqlite3
 
-conn = sqlite3.connect('blood.db')
-cursor = conn.cursor()
-cursor.execute('''CREATE TABLE IF NOT EXISTS User(
-                UserID INTEGER PRIMARY KEY AUTOINCREMENT,
-                firstName TEXT,
-                lastName TEXT,
-                gender   TEXT,
-                phone   INT,
-                email TEXT
-                
-    )''')
-conn.commit()
-conn.close()
+sign_up_window = None
+login_window = None  # Add a variable to store the login window
 
-def register():
-    first_name_value = fnameEntry.get()
-    last_name_value = lnameEntry.get()
-    gender_value = var.get()
-    phone_value = phoneEntry.get()
-    email_value = emailEntry.get()
-  
+def create_users_table():
+    # Connect to the SQLite database
+    conn = sqlite3.connect("user.db")
+    c = conn.cursor()
 
-    # Perform registration logic here
-    print("Registration Details:")
-    print("First Name:", first_name_value)
-    print("Last Name:", last_name_value)
-    print("Gender:", "Male" if gender_value == 1 else "Female")
-    print("Phone Number:", phone_value)
-    print("Email:", email_value)
-    
-    conn = sqlite3.connect('blood.db')
-    cursor = conn.cursor()
-    cursor.execute('''INSERT INTO User(firstName,lastName,gender,streetAdd1,streetAdd2,city,phone,email) VALUES (?,?,?,?,?,?,?,?)''',(first_name_value,last_name_value,gender_value,phone_value,email_value))
+    # Create the users table if it doesn't exist
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        first_name TEXT NOT NULL,
+        last_name TEXT NOT NULL,
+        email TEXT NOT NULL UNIQUE,
+        password TEXT NOT NULL
+    )
+    """)
+
+    # Commit changes and close the connection
     conn.commit()
     conn.close()
 
-root = tk.Tk()
-root.geometry('800x700')
-root.title('Admin Regestration')
+# Call the function to create the users table
+create_users_table()
 
-titleF = ttk.Frame(root)
-titleL = ttk.Label(titleF, text='Admin regestration form', font=('Arial', 45), foreground='black')
-titleF.pack()
-titleL.pack(pady=20)
+def register_user():
+    # Retrieve user inputs
+    first_name = e3.get()
+    last_name = e4.get()
+    email = e5.get()
+    password = e6.get()
 
-regis = tk.Frame(root, borderwidth=2, relief=tk.GROOVE)
-regis.pack(fill=tk.X, padx=10, pady=10)
+    # Validate if required fields are not empty
+    if not (first_name and last_name and email and password):
+        messagebox.showerror("Error", "Please fill out all the fields")
+        return
 
-nameF = ttk.LabelFrame(regis, text='Full Name', labelanchor='n')
-nameF.pack(expand=True, pady=10)
+    # Connect to the SQLite database
+    conn = sqlite3.connect("user.db")
+    c = conn.cursor()
 
-fname = ttk.Label(nameF, text='Donor Name:')
-fname.grid(row=0, column=0, padx=5, pady=5, sticky='w')
-fnameEntry = ttk.Entry(nameF)
-fnameEntry.grid(row=0, column=1, padx=5, pady=5, sticky='w')
+    # Check if the email already exists in the database
+    c.execute("SELECT * FROM users WHERE email=?", (email,))
+    existing_user = c.fetchone()
 
-lname = ttk.Label(nameF, text='Last Name:')
-lname.grid(row=1, column=0, padx=5, pady=5, sticky='w')
-lnameEntry = ttk.Entry(nameF)
-lnameEntry.grid(row=1, column=1, padx=5, pady=5, sticky='w')
+    if existing_user:
+        messagebox.showerror("Error", "User with this email already exists")
+    else:
 
-othersF = ttk.LabelFrame(regis, text='Personal Info', labelanchor='n')
-othersF.pack(expand=True, pady=10)
+        # Insert the new user into the database
+        c.execute("INSERT INTO users (first_name, last_name, email, password) VALUES (?, ?, ?, ?)",
+                  (first_name, last_name, email, password))
 
-var = tk.IntVar()
-gender_label = ttk.Label(othersF, text='Gender:')
-gender_label.grid(row=0, column=0, padx=5, pady=5, sticky='w')
+        # Commit changes
+        conn.commit()
 
-male = ttk.Radiobutton(othersF, text='Male', variable=var, value=1)
-male.grid(row=1, column=0, padx=5, pady=5, sticky='w')
+        # Close the connection
+        conn.close()
 
-female = ttk.Radiobutton(othersF, text='Female', variable=var, value=2)
-female.grid(row=1, column=1, padx=5, pady=5, sticky='w')
+        # Destroy the registration window
+        if sign_up_window and not sign_up_window.winfo_ismapped():
+            sign_up_window.destroy()
+
+        messagebox.showinfo("Success", "Registration successful!")
+
+        open_login_window()
 
 
+def open_login_window():
+    global login_window
+    import login as login
+    if sign_up_window and not sign_up_window.winfo_ismapped():
+        sign_up_window.destroy()
 
-contactF = ttk.LabelFrame(regis, text='Contacts', labelanchor='n')
-contactF.pack(expand=True, pady=10)
+    # Open the login window
+    login.create_login_window()
+    
+def create_registration_window():
+    # Create a new Tkinter window for user registration
+    global sign_up_window
+    sign_up_window = Tk()
+    sign_up_window.geometry("800x500")
+    sign_up_window.title("Register")
+    sign_up_window.config(bg="#F8F9F9")
 
-phone = ttk.Label(contactF, text='Phone Number:')
-phone.grid(row=0, column=0, padx=5, pady=5, sticky='w')
-phoneEntry = ttk.Entry(contactF)
-phoneEntry.grid(row=0, column=1, padx=5, pady=5, sticky='w')
+    # Register labels and entry widgets
+    reg = Label(sign_up_window, text="REGISTER", font=('Times New Roman', 23), background='#F8F9F9').place(x=530, y=80)
+    fnam = Label(sign_up_window, text="First Name", bg="#F8F9F9").place(x=350, y=150)
+    global e3
+    e3 = Entry(sign_up_window, background="#F8F9F9")
+    e3.place(x=430, y=150)
 
-email = ttk.Label(contactF, text='Email:')
-email.grid(row=1, column=0, padx=5, pady=5, sticky='w')
-emailEntry = ttk.Entry(contactF)
-emailEntry.grid(row=1, column=1, padx=5, pady=5, sticky='w')
+    lnam = Label(sign_up_window, text="Last Name", bg="#F8F9F9").place(x=350, y=180)
+    global e4
+    e4 = Entry(sign_up_window, background="#F8F9F9")
+    e4.place(x=430, y=180)
 
-submit = ttk.Button(regis, text='Submit', command=register, style="TButton")
-submit.pack(pady=20)
+    email_lbl = Label(sign_up_window, text="Email", bg="#F8F9F9").place(x=350, y=210)
+    global e5
+    e5 = Entry(sign_up_window, background="#F8F9F9")
+    e5.place(x=430, y=210)
 
-root.mainloop()
+    password_lbl = Label(sign_up_window, text="Password", bg="#F8F9F9").place(x=350, y=240)
+    global e6
+    e6 = Entry(sign_up_window, show="**", background="#F8F9F9")
+    e6.place(x=430, y=240)
+
+    # Register button
+    Button(sign_up_window, padx=5, pady=5, text="Register", bg="sky blue", command=register_user, fg="blue").place(x=550, y=290)
+
+    # Back to login button
+    Button(sign_up_window, padx=5, pady=5, text="Back to Login", bg="lightgrey", command=open_login_window).place(x=670, y=290)
+
+    sign_up_window.mainloop()
+
+if __name__ == "__main__":
+    create_registration_window()
